@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+rm -rf bestanden
+git checkout HEAD -- bestanden

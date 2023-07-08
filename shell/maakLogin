@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+while true;
+do
+        echo "Vul je naam in: "
+        read name
+    if [ -z $name ];
+    then
+        name="$USER"
+        echo "Standaard gebruiker: $name"
+        echo
+        break
+    else
+        echo
+        break
+    fi
+done
+
+while true;
+do
+        echo "Vul je wachtwoord 2 maal in (zonder spaties): "
+        read pass1
+        read pass2
+    if [ $pass1 == $pass2 ];
+        then
+        password=$pass1
+        echo
+        break
+    else
+        echo "Probeer het opnieuw"
+        echo
+    fi
+done
+
+touch $1.txt
+echo "Naam:" >> $1.txt
+echo $name >> $1.txt
+echo "Wachtwoord:" >> $1.txt
+echo $pass1 | md5sum >> $1.txt
+echo >> $1.txt

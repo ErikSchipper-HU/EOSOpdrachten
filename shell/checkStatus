@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+cd ./$1
+mkdir -p Kaasje
+mkdir -p Nog_een_folder
+touch $2.txt
+
+for file in *
+do
+	if [ -f "$file" ];
+	then
+	#echo ".:$file:. is een bestand." >> $2.txt
+	echo "$? $file" >> $2.txt
+	else
+	echo "$? $file" >> $2.txt
+	fi
+done

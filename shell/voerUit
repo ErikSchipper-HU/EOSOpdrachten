@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+case $1 in
+    *.sh)
+    bash $1
+    ;;
+    *.py)
+    python3 $1
+    ;;
+    *.cc)
+    cat $1
+    ;;
+    *)
+    echo "Niet ondersteund."
+    ;;
+esac
