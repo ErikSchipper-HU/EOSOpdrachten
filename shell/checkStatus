@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
 cd ./$1
-mkdir -p Kaasje
-mkdir -p Nog_een_folder
-touch $2.txt
 
-for file in *
-do
-	if [ -f "$file" ];
-	then
-	#echo ".:$file:. is een bestand." >> $2.txt
-	echo "$? $file" >> $2.txt
-	else
-	echo "$? $file" >> $2.txt
-	fi
+DIRECTORY="$1"
+COMMAND="$2"
+LOGFILE="$3"
+
+# Check if the directory exists
+if [ ! -d "$DIRECTORY" ]; then
+  echo "De opgegeven directory bestaat niet: $DIRECTORY"
+  exit 1
+fi
+
+# Create or clear the logfile
+> "$LOGFILE"
+
+# Loop through each file in the directory and execute the command
+for file in "$DIRECTORY"/*; do
+  if [ -f "$file" ]; then
+    # Execute the command on the file
+    $COMMAND "$file" &>> "$LOGFILE"
+    # Check the return status of the command and log the result
+    if [ $? -eq 0 ]; then
+      echo "Commando succesvol uitgevoerd op $file" >> "$LOGFILE"
+    else
+      echo "Fout bij het uitvoeren van het commando op $file" >> "$LOGFILE"
+    fi
+  fi
 done
+
+echo "Het commando is uitgevoerd op alle bestanden in $DIRECTORY. Resultaten zijn gelogd in $LOGFILE."
