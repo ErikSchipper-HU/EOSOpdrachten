@@ -1,40 +1,27 @@
 #!/usr/bin/env bash
 
-while true;
-do
-        echo "Vul je naam in: "
-        read name
-    if [ -z $name ];
-    then
-        name="$USER"
-        echo "Standaard gebruiker: $name"
-        echo
+# Vraag om de gebruikersnaam, gebruik de huidige gebruikersnaam als standaard
+read -p "Geef je naam (standaard: $(whoami)): " username
+username=${username:-$(whoami)}
+
+# Vraag om het wachtwoord en herhaal dit tot tweemaal hetzelfde wachtwoord wordt ingevoerd
+while true; do
+    read -s -p "Voer je wachtwoord in (minimaal 8 karakters): " password
+    echo
+    read -s -p "Herhaal je wachtwoord: " password_confirm
+    echo
+    if [ "$password" == "$password_confirm" ] && [ ${#password} -ge 8 ]; then
         break
     else
-        echo
-        break
+        echo "Wachtwoorden komen niet overeen of zijn te kort. Probeer opnieuw."
     fi
 done
 
-while true;
-do
-        echo "Vul je wachtwoord 2 maal in (zonder spaties): "
-        read pass1
-        read pass2
-    if [ $pass1 == $pass2 ];
-        then
-        password=$pass1
-        echo
-        break
-    else
-        echo "Probeer het opnieuw"
-        echo
-    fi
-done
+# Genereer de MD5-hash van het wachtwoord
+password_hash=$(echo -n "$password" | md5sum | cut -d' ' -f1)
 
-touch $1.txt
-echo "Naam:" >> $1.txt
-echo $name >> $1.txt
-echo "Wachtwoord:" >> $1.txt
-echo $pass1 | md5sum >> $1.txt
-echo >> $1.txt
+# Schrijf de gebruikersnaam en de MD5-hash naar het tekstbestand
+echo "Gebruikersnaam: $username" > "$1"
+echo "Wachtwoord hash: $password_hash" >> "$1"
+
+echo "Login aangemaakt en opgeslagen in $1."
