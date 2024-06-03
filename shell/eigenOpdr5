@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Vraag om de map met originele afbeeldingen
+read -p "Geef het pad naar de map met originele afbeeldingen: " orig_map
+
+# Controleer of de opgegeven map bestaat
+if [ ! -d "$orig_map" ]; then
+    echo "De opgegeven map bestaat niet."
+    exit 1
+fi
+
+# Vraag om de map waar gecomprimeerde afbeeldingen moeten worden opgeslagen
+read -p "Geef het pad naar de map waar gecomprimeerde afbeeldingen moeten worden opgeslagen: " comp_map
+
+# Controleer of de opgegeven map bestaat, zo niet, maak deze aan
+if [ ! -d "$comp_map" ]; then
+    mkdir -p "$comp_map"
+fi
+
+# Loop door alle afbeeldingen in de originele map
+for img in "$orig_map"/*; do
+    if [ -f "$img" ]; then
+        # Comprimeer de afbeelding en sla deze op in de doelmap met dezelfde naam
+        img_name=$(basename "$img")
+        img_comp="$comp_map/$img_name"
+        echo "Comprimeren van $img naar $img_comp ..."
+        convert "$img" -resize 50% "$img_comp"
+    fi
+done
+
+echo "Alle afbeeldingen zijn gecomprimeerd en opgeslagen in $comp_map."
