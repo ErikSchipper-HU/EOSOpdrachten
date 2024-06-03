@@ -1,20 +1,23 @@
-#!/usr/bin/env bash
-cd ./EOS1_bestanden
+if [ -z "$1" ]; then
+  echo "Gebruik: $0 /pad/naar/EOS1_bestanden"
+  exit 1
+fi
 
-for file in *.jpg
-do
-	mv "$file" "${file%.jpg}.png"
-done
+SOURCE_DIR="$1"
 
-for file in *.gif
-do
-	mv "$file" "${file%.gif}.png"
-done
 
-mogrify -resize '128x128' *.png
+if [ ! -d "$SOURCE_DIR" ]; then
+  echo "De opgegeven directory bestaat niet: $SOURCE_DIR"
+  exit 1
+fi
 
-for file in *.png~
-do
-	rm $file
-done
+# Check if ImageMagick is installed
+if ! command -v mogrify &> /dev/null; then
+  echo "ImageMagick is niet geïnstalleerd. Installeer het met: sudo apt install imagemagick"
+  exit 1
+fi
 
+# Convert all JPEG files to PNG with max size 128x128 pixels
+find "$SOURCE_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec mogrify -format png -resize 128x128 {} \;
+
+echo "Alle JPEG-bestanden zijn geconverteerd naar PNG en verkleind tot maximaal 128x128 pixels."
