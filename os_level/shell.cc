@@ -1,39 +1,148 @@
 #include "shell.hh"
 
-int main()
-{ std::string input;
+#include <iostream>
+#include <string>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <cstring>
 
-  // ToDo: Vervang onderstaande regel: Laad prompt uit bestand
-  std::string prompt = "ToDo: Laad de prompt uit een bestand! ";
+std::string load_prompt(const char *filename) {
+    int fd = syscall(SYS_open, filename, O_RDONLY);
+    if (fd < 0) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
 
-  while(true)
-  { std::cout << prompt;                   // Print het prompt
-    std::getline(std::cin, input);         // Lees een regel
-    if (input == "new_file") new_file();   // Kies de functie
-    else if (input == "ls") list();        //   op basis van
-    else if (input == "src") src();        //   de invoer
-    else if (input == "find") find();
-    else if (input == "seek") seek();
-    else if (input == "exit") return 0;
-    else if (input == "quit") return 0;
-    else if (input == "error") return 1;
+    char buffer[256];
+    ssize_t n = syscall(SYS_read, fd, buffer, sizeof(buffer) - 1);
+    if (n < 0) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+    buffer[n] = '\0';
+    syscall(SYS_close, fd);
+    return std::string(buffer);
+}
 
-    if (std::cin.eof()) return 0; } }      // EOF is een exit
+void new_file() {
+    std::string filename;
+    std::string content;
+    std::string line;
 
-void new_file() // ToDo: Implementeer volgens specificatie.
-{ std::cout << "ToDo: Implementeer hier new_file()" << std::endl; }
+    std::cout << "Enter filename: ";
+    std::getline(std::cin, filename);
+    std::cout << "Enter file content (end with <EOF>):\n";
+    
+    while (std::getline(std::cin, line)) {
+        if (line == "<EOF>") break;
+        content += line + "\n";
+    }
 
-void list() // ToDo: Implementeer volgens specificatie.
-{ std::cout << "ToDo: Implementeer hier list()" << std::endl; }
+    int fd = syscall(SYS_creat, filename.c_str(), 0644);
+    if (fd < 0) {
+        perror("creat");
+        return;
+    }
 
-void find() // ToDo: Implementeer volgens specificatie.
-{ std::cout << "ToDo: Implementeer hier find()" << std::endl; }
+    if (syscall(SYS_write, fd, content.c_str(), content.size()) < 0) {
+        perror("write");
+    }
 
-void seek() // ToDo: Implementeer volgens specificatie.
-{ std::cout << "ToDo: Implementeer hier seek()" << std::endl; }
+    syscall(SYS_close, fd);
+}
 
-void src() // Voorbeeld: Gebruikt SYS_open en SYS_read om de source van de shell (shell.cc) te printen.
-{ int fd = syscall(SYS_open, "shell.cc", O_RDONLY, 0755); // Gebruik de SYS_open call om een bestand te openen.
-  char byte[1];                                           // 0755 zorgt dat het bestand de juiste rechten krijgt (leesbaar is).
-  while(syscall(SYS_read, fd, byte, 1))                   // Blijf SYS_read herhalen tot het bestand geheel gelezen is,
-    std::cout << byte; }                                  //   zet de gelezen byte in "byte" zodat deze geschreven kan worden.
+void list() {
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("ls", "ls", "-la", NULL);
+        perror("execlp");
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        wait(NULL);
+    } else {
+        perror("fork");
+    }
+}
+
+void find() {
+    std::string search_string;
+    std::cout << "Enter search string: ";
+    std::getline(std::cin, search_string);
+
+    int pipefd[2];
+    if (pipe(pipefd) < 0) {
+        perror("pipe");
+        return;
+    }
+
+    pid_t pid1 = fork();
+    if (pid1 == 0) {
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        execlp("find", "find", ".", NULL);
+        perror("execlp");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid2 = fork();
+    if (pid2 == 0) {
+        dup2(pipefd[0], STDIN_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        execlp("grep", "grep", search_string.c_str(), NULL);
+        perror("execlp");
+        exit(EXIT_FAILURE);
+    }
+
+    close(pipefd[0]);
+    close(pipefd[1]);
+    wait(NULL);
+    wait(NULL);
+}
+
+void seekTest() {
+    int fd_seek = syscall(SYS_creat, "seek", 0644);
+    int fd_loop = syscall(SYS_creat, "loop", 0644);
+
+    if (fd_seek < 0 || fd_loop < 0) {
+        perror("creat");
+        return;
+    }
+
+    syscall(SYS_write, fd_seek, "x", 1);
+    syscall(SYS_lseek, fd_seek, 5 * 1024 * 1024, SEEK_SET);
+    syscall(SYS_write, fd_seek, "x", 1);
+    syscall(SYS_close, fd_seek);
+
+    syscall(SYS_write, fd_loop, "x", 1);
+    for (int i = 0; i < 5 * 1024 * 1024; ++i) {
+        syscall(SYS_write, fd_loop, "\0", 1);
+    }
+    syscall(SYS_write, fd_loop, "x", 1);
+    syscall(SYS_close, fd_loop);
+
+    list();
+}
+
+int main() {
+    std::string input;
+    std::string prompt = load_prompt("prompt.txt");
+
+    while(true) {
+        std::cout << prompt;
+        std::getline(std::cin, input);
+
+        if (input == "new_file") new_file();
+        else if (input == "ls") list();
+        else if (input == "find") find();
+        else if (input == "seekTest") seekTest();
+        else if (input == "exit" || input == "quit") return 0;
+        else std::cout << "Unknown command: " << input << std::endl;
+
+        if (std::cin.eof()) return 0;
+    }
+}
